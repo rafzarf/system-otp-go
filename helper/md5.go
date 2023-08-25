@@ -4,7 +4,7 @@ import (
 	"crypto/md5"
 	"encoding/hex"
 	"github.com/gin-gonic/gin"
-	"github.com/wpcodevo/two_factor_golang/models"
+	"github.com/rafzarf/system-otp-go/models"
 	"net/http"
 )
 
