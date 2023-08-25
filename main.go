@@ -2,14 +2,14 @@ package main
 
 import (
 	"fmt"
-	"github.com/wpcodevo/two_factor_golang/models"
+	"github.com/rafzarf/system-otp-go/models"
 	"log"
 	"net/http"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-	"github.com/wpcodevo/two_factor_golang/controllers"
-	"github.com/wpcodevo/two_factor_golang/routes"
+	"github.com/rafzarf/system-otp-go/controllers"
+	"github.com/rafzarf/system-otp-go/routes"
 	"gorm.io/driver/mysql" // Menggunakan driver MySQL
 	"gorm.io/gorm"
 )
