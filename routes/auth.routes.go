@@ -2,7 +2,7 @@ package routes
 
 import (
 	"github.com/gin-gonic/gin"
-	"github.com/wpcodevo/two_factor_golang/controllers"
+	"github.com/rafzarf/system-otp-go/controllers"
 )
 
 type AuthRouteController struct {
