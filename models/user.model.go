@@ -6,10 +6,10 @@ import (
 )
 
 type User struct {
-	ID       uuid.UUID `gorm:"type:uuid;primary_key;"`
-	Name     string    `gorm:"type:varchar(255);not null"`
-	Email    string    `gorm:"uniqueIndex;not null"`
-	Password string    `gorm:"not null"`
+	ID       string `gorm:"primaryKey;autoIncrement"`
+	Name     string `gorm:"type:varchar(255);not null"`
+	Email    string `gorm:"uniqueIndex;not null"`
+	Password string `gorm:"not null"`
 
 	Otp_enabled  bool `gorm:"default:false;"`
 	Otp_verified bool `gorm:"default:false;"`
@@ -19,7 +19,8 @@ type User struct {
 }
 
 func (user *User) BeforeCreate(*gorm.DB) error {
-	user.ID = uuid.NewV4()
+	newUUID := uuid.NewV4()
+	user.ID = newUUID.String()
 
 	return nil
 }

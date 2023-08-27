@@ -1,12 +1,16 @@
 package controllers
 
 import (
+	"bytes"
+	"encoding/json"
+	"fmt"
 	"github.com/gin-gonic/gin"
-	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"github.com/pquerna/otp/totp"
 	"github.com/rafzarf/system-otp-go/helper"
 	"github.com/rafzarf/system-otp-go/models"
 	"gorm.io/gorm"
+	"io"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"strings"
@@ -75,7 +79,7 @@ func (ac *AuthController) LoginUser(ctx *gin.Context) {
 	}
 
 	userResponse := gin.H{
-		"id":          user.ID.String(),
+		"id":          user.ID,
 		"name":        user.Name,
 		"email":       user.Email,
 		"otp_enabled": user.Otp_enabled,
@@ -83,7 +87,22 @@ func (ac *AuthController) LoginUser(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, gin.H{"status": "success", "user": userResponse})
 }
 
-func (ac *AuthController) GenerateOTP(ctx *gin.Context) {
+func (ac *AuthController) GenerateOTPForUser(userID string) (string, error) {
+	var user models.User
+	result := ac.DB.First(&user, "id = ?", userID)
+	if result.Error != nil {
+		return "", fmt.Errorf("user doesn't exist")
+	}
+
+	// Generate TOTP token
+	token, err := totp.GenerateCode(user.Otp_secret, time.Now())
+	if err != nil {
+		return "", fmt.Errorf("failed to generate TOTP token")
+	}
+	return token, nil
+}
+
+func (ac *AuthController) GenerateOTPToken(ctx *gin.Context) {
 	var payload *models.OTPInput
 
 	if err := ctx.ShouldBindJSON(&payload); err != nil {
@@ -91,27 +110,19 @@ func (ac *AuthController) GenerateOTP(ctx *gin.Context) {
 		return
 	}
 
-	// Retrieve user from the database
-	var user models.User
-	result := ac.DB.First(&user, "id = ?", payload.UserId)
-	if result.Error != nil {
-		ctx.JSON(http.StatusBadRequest, gin.H{"status": "fail", "message": "User doesn't exist"})
-		return
-	}
+	userID := payload.UserId // Use the user ID as a string
 
-	// Generate TOTP token
-	token, err := totp.GenerateCode(user.Otp_secret, time.Now())
+	otpToken, err := ac.GenerateOTPForUser(userID)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"status": "error", "message": "Failed to generate TOTP token"})
+		ctx.JSON(http.StatusInternalServerError, gin.H{"status": "error", "message": "Failed to generate OTP token"})
 		return
 	}
 
-	// Send the TOTP token in the response
-	ctx.JSON(http.StatusOK, gin.H{"otp_token": token})
+	ctx.JSON(http.StatusOK, gin.H{"otp_token": otpToken})
 }
 
 func (ac *AuthController) SendOTPTelegram(ctx *gin.Context) {
-	var payload *models.SendOTPTelegramInput
+	var payload models.SendOTPTelegramInput
 
 	if err := ctx.ShouldBindJSON(&payload); err != nil {
 		ctx.JSON(http.StatusBadRequest, gin.H{"status": "fail", "message": err.Error()})
@@ -125,55 +136,42 @@ func (ac *AuthController) SendOTPTelegram(ctx *gin.Context) {
 		return
 	}
 
-	// Generate OTP key
-	key, err := totp.Generate(totp.GenerateOpts{
-		Issuer:      "contoh-sistem-otp",
-		AccountName: user.Email, // Use the user's email or some identifier
-		SecretSize:  6,
-		Period:      180,
-	})
-
+	// Generate OTP token for the user
+	otpToken, err := ac.GenerateOTPForUser(user.ID)
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"status": "error", "message": "Failed to generate OTP"})
+		ctx.JSON(http.StatusInternalServerError, gin.H{"status": "error", "message": err.Error()})
 		return
 	}
 
-	// Update user's OTP secret and URL
-	dataToUpdate := models.User{
-		Otp_secret:   key.Secret(),
-		Otp_auth_url: key.URL(),
+	// Prepare the message text
+	msgText := fmt.Sprintf("Here is your OTP token: %s", otpToken)
+
+	// Prepare message payload
+	messagePayload := map[string]string{
+		"chat_id": payload.TelegramChatID,
+		"text":    msgText,
 	}
+	messagePayloadBytes, _ := json.Marshal(messagePayload)
 
-	ac.DB.Model(&user).Updates(dataToUpdate)
-
-	//bot mulai
-	bot, err := tgbotapi.NewBotAPI("6579966415:AAGs4-qcypUQOS51rf5d5WNxT3Wf1mDpMlQ")
+	// Send the message using HTTP POST
+	resp, err := http.Post("https://api.telegram.org/bot6579966415:AAGs4-qcypUQOS51rf5d5WNxT3Wf1mDpMlQ/sendMessage", "application/json", bytes.NewBuffer(messagePayloadBytes))
 	if err != nil {
-		ctx.JSON(http.StatusInternalServerError, gin.H{"status": "error", "message": "Failed to initialize Telegram bot"})
+		log.Printf("Failed to send message to Telegram: %s", err.Error())
+		ctx.JSON(http.StatusInternalServerError, gin.H{"status": "error", "message": "Failed to send OTP token to Telegram"})
 		return
 	}
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
 
-	bot.Debug = true
-
-	log.Printf("Authorized on account %s", bot.Self.UserName)
-
-	u := tgbotapi.NewUpdate(0)
-	u.Timeout = 30
-
-	updates := bot.GetUpdatesChan(u)
-
-	for update := range updates {
-		if update.Message != nil { // If we got a message
-			log.Printf("[%s] %s", update.Message.From.UserName, update.Message.Text)
-
-			msg := tgbotapi.NewMessage(update.Message.Chat.ID, "Here is your OTP information:\n"+
-				"OTP Secret: "+key.Secret()+"\n"+
-				"OTP Auth URL: "+key.URL())
-			msg.ReplyToMessageID = update.Message.MessageID
-
-			bot.Send(msg)
 		}
-	}
+	}(resp.Body)
+
+	// Read the response
+	body, _ := ioutil.ReadAll(resp.Body)
+	log.Printf("Telegram API response: %s", string(body))
+
+	ctx.JSON(http.StatusOK, gin.H{"status": "success", "message": "OTP token sent to Telegram"})
 }
 
 func (ac *AuthController) VerifyOTP(ctx *gin.Context) {
@@ -207,7 +205,7 @@ func (ac *AuthController) VerifyOTP(ctx *gin.Context) {
 	ac.DB.Model(&user).Updates(dataToUpdate)
 
 	userResponse := gin.H{
-		"id":          user.ID.String(),
+		"id":          user.ID,
 		"name":        user.Name,
 		"email":       user.Email,
 		"otp_enabled": user.Otp_enabled,
@@ -260,7 +258,7 @@ func (ac *AuthController) DisableOTP(ctx *gin.Context) {
 	ac.DB.Save(&user)
 
 	userResponse := gin.H{
-		"id":          user.ID.String(),
+		"id":          user.ID,
 		"name":        user.Name,
 		"email":       user.Email,
 		"otp_enabled": user.Otp_enabled,
