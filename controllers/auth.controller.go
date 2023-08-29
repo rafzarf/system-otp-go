@@ -37,9 +37,10 @@ func (ac *AuthController) SignUpUser(ctx *gin.Context) {
 	hashedPassword := helper.HashMD5(payload.Password)
 
 	newUser := models.User{
-		Name:     payload.Name,
-		Email:    strings.ToLower(payload.Email),
-		Password: hashedPassword, // Store the hashed password
+		Name:             payload.Name,
+		Email:            strings.ToLower(payload.Email),
+		Password:         hashedPassword, // Store the hashed password
+		Telegram_chat_id: "808757394",
 	}
 
 	result := ac.DB.Create(&newUser)

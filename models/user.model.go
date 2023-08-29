@@ -11,6 +11,8 @@ type User struct {
 	Email    string `gorm:"uniqueIndex;not null"`
 	Password string `gorm:"not null"`
 
+	Telegram_chat_id string `gorm:"type:varchar(32)"`
+
 	Otp_enabled  bool `gorm:"default:false;"`
 	Otp_verified bool `gorm:"default:false;"`
 
@@ -32,7 +34,7 @@ type RegisterUserInput struct {
 }
 
 type LoginUserInput struct {
-	Email    string `json:"email" bindinig:"required"`
+	Email    string `json:"email" binding:"required"`
 	Password string `json:"password" binding:"required"`
 }
 

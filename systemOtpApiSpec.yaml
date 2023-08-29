@@ -1,0 +1,179 @@
+openapi: 3.0.3
+info:
+  title: Sistem OTP Sederhana
+  description: Sistem OTP Sederhana merupakan sebuah web app sederhana untuk mendemonstrasikan sistem keamanan jaringan berbasis OTP
+  version: 1.0.0
+servers:
+  - url: http://localhost:8080/v1
+    description: Development server
+paths:
+  /auth/register:
+    post:
+      summary: Register a new user
+      operationId: signUpUser
+      requestBody:
+        description: User registration data
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserRegistration'
+      responses:
+        '200':
+          description: Successful registration
+  /auth/login:
+    post:
+      summary: User login
+      operationId: loginUser
+      requestBody:
+        description: User login credentials
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserLogin'
+      responses:
+        '200':
+          description: Successful login
+  /auth/otp/generate:
+    post:
+      summary: Generate OTP token
+      operationId: generateOTPToken
+      requestBody:
+        description: User login credentials
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OTPGenerate'
+      responses:
+        '200':
+          description: OTP token generated successfully
+  /auth/otp/verify:
+    post:
+      summary: Verify OTP token
+      operationId: verifyOTP
+      requestBody:
+        description: OTP verification data
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OTPVerification'
+      responses:
+        '200':
+          description: OTP token verified successfully
+  /auth/otp/validate:
+    post:
+      summary: Validate OTP token
+      operationId: validateOTP
+      requestBody:
+        description: OTP validation data
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OTPValidation'
+      responses:
+        '200':
+          description: OTP token validated successfully
+  /auth/otp/disable:
+    post:
+      summary: Disable OTP for user
+      operationId: disableOTP
+      requestBody:
+        description: OTP disable data
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OTPDisable'
+      responses:
+        '200':
+          description: OTP disabled successfully
+  /auth/send-otp-telegram:
+    post:
+      summary: Send OTP via Telegram
+      operationId: sendOTPTelegram
+      requestBody:
+        description: Send OTP to Telegram
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SendOTPTelegram'
+      responses:
+        '200':
+          description: OTP sent via Telegram successfully
+components:
+  schemas:
+    UserRegistration:
+      type: object
+      properties:
+        email:
+          type: string
+        name:
+          type: string
+        password:
+          type: string
+      required:
+        - email
+        - name
+        - password
+    UserLogin:
+      type: object
+      properties:
+        email:
+          type: string
+        password:
+          type: string
+      required:
+        - email
+        - password
+    OTPGenerate:
+      type: object
+      properties:
+        ID:
+          type: string
+      required:
+        - ID
+    OTPVerification:
+      type: object
+      properties:
+        user_id:
+          type : string
+        otp_token:
+          type: string
+      required:
+        - user_id
+        - otp_token
+    OTPValidation:
+      type: object
+      properties:
+        user_id:
+          type : string
+        otp_token:
+          type: string
+      required:
+        - user_id
+        - otp_token
+    OTPDisable:
+      type: object
+      properties:
+        user_id:
+          type: string
+        otp_token:
+          type: string
+      required:
+        - user_id
+        - otp_token
+    SendOTPTelegram:
+      type: object
+      properties:
+        ID:
+          type: string
+        TelegramChatID:
+          type: string
+      required:
+        - ID
+        - TelegramChatID
