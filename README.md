@@ -7,10 +7,7 @@ Here is the Implementation of OTP system using Go as a Backend and React.js as F
 This project aims to create a simple OTP (One-Time Password) system for demonstrating network security using Go for the backend and React.js for the frontend.
 
 ### Faculty Lead(s)
-
 Dr. Susetyo Bagas Bhaskoro, S.T., M.T.
-
----
 
 ## How to Run
 
@@ -56,7 +53,7 @@ npm dev
 ```
 5. Open your web browser and navigate to http://localhost:3000 to test the two-factor authentication system against the API
 
----
+
 ## API 
 ### Backend API Specification
 
